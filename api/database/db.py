@@ -25,14 +25,25 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
+_db_initialized = False
+
+
 async def init_db() -> None:
     """Initializes database tables on application startup."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            _db_initialized = True
+        except Exception as e:
+            print(f"⚠️ init_db warning: {e}")
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency for obtaining an asynchronous database session."""
+    if not _db_initialized:
+        await init_db()
     async with AsyncSessionLocal() as session:
         try:
             yield session
@@ -46,9 +57,12 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def check_db_health() -> bool:
     """Verifies database connectivity for readiness probes (/ready)."""
     try:
+        if not _db_initialized:
+            await init_db()
         async with AsyncSessionLocal() as session:
             await session.execute(text("SELECT 1"))
             return True
     except Exception as e:
         print(f"⚠️ DB Health check failed: {e}")
         return False
+

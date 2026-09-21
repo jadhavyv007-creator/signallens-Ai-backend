@@ -57,14 +57,23 @@ async def lifespan(app: FastAPI):
     print("🛑 SignalLens AI Backend shutting down gracefully.")
 
 
+import os
+
+is_serverless = bool(
+    os.environ.get("VERCEL")
+    or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+    or os.environ.get("LAMBDA_TASK_ROOT")
+)
+
 app = FastAPI(
     title="SignalLens AI Backend",
     description="Automated Signal Intelligence (SIGINT) & Pure-NumPy DSP Workbench API",
     version="3.0.0",
-    lifespan=lifespan,
+    lifespan=None if is_serverless else lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
 
 # 1. Exception Handlers (Standard Error Response Shape)
 app.add_exception_handler(APIException, api_exception_handler)
