@@ -1,0 +1,367 @@
+{
+  "info": {
+    "name": "SignalLens AI 3.0 API Collection",
+    "_postman_id": "signallens-ai-v3-collection",
+    "description": "Enterprise SIGINT, Pure-NumPy DSP Workbench, and Commercial Tiering API Suite.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01. Health & Probes",
+      "item": [
+        {
+          "name": "GET /health (Liveness)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has success: true\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.status).to.eql(\"healthy\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /ready (Readiness)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ready",
+              "host": ["{{baseUrl}}"],
+              "path": ["ready"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"DB is connected\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.database).to.eql(\"connected\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02. Authentication",
+      "item": [
+        {
+          "name": "POST /api/v1/auth/register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"analyst_{{$randomInt}}@defense.gov\",\n  \"password\": \"SecureDefensePass123!\",\n  \"name\": \"Senior SIGINT Operator\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.success).to.be.true;",
+                  "if (json.data && json.data.accessToken) {",
+                  "    pm.environment.set(\"accessToken\", json.data.accessToken);",
+                  "    pm.environment.set(\"tokenExpiry\", Date.now() + 14 * 60 * 1000);",
+                  "    pm.environment.set(\"userId\", json.data.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"SecureDefensePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.accessToken) {",
+                  "    pm.environment.set(\"accessToken\", json.data.accessToken);",
+                  "    pm.environment.set(\"tokenExpiry\", Date.now() + 14 * 60 * 1000);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/v1/users/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "me"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.data.email).to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/auth/refresh",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Signal Intelligence & DSP",
+      "item": [
+        {
+          "name": "POST /api/v1/analyze (Multipart Signal Ingestion)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "sample_rate",
+                  "value": "44100",
+                  "type": "text"
+                },
+                {
+                  "key": "carrier_freq_hz",
+                  "value": "100000000",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/analyze",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "analyze"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.success).to.be.true;",
+                  "pm.expect(json.data.metrics).to.exist;",
+                  "pm.expect(json.data.visualizations).to.exist;",
+                  "pm.expect(json.data.aiAnalysis).to.exist;",
+                  "pm.expect(json.data.advanced).to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/analyze/tdoa (Sovereign Trilateration)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receivers\": [\n    {\"receiverId\": \"RX-ALPHA\", \"latitude\": 28.6139, \"longitude\": 77.2090, \"timestampUtc\": \"2026-09-20T12:00:00Z\"},\n    {\"receiverId\": \"RX-BRAVO\", \"latitude\": 28.5355, \"longitude\": 77.3910, \"timestampUtc\": \"2026-09-20T12:00:00Z\"},\n    {\"receiverId\": \"RX-CHARLIE\", \"latitude\": 28.4595, \"longitude\": 77.0266, \"timestampUtc\": \"2026-09-20T12:00:00Z\"}\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/analyze/tdoa",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "analyze", "tdoa"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Commercial Billing",
+      "item": [
+        {
+          "name": "GET /api/v1/billing/tiers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/billing/tiers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "billing", "tiers"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.data.length).to.eql(3);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/billing/checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tier\": \"cyber_pro\",\n  \"currency\": \"INR\",\n  \"billingCycle\": \"monthly\",\n  \"paymentProvider\": \"simulation\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/billing/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "billing", "checkout"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/billing/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/billing/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "billing", "me"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
