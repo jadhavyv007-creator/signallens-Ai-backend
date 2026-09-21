@@ -9,12 +9,19 @@ from sqlalchemy import text
 from api.config.env import env
 from api.database.models import Base
 
-# Database engine configuration
-engine = create_async_engine(
-    env.effective_database_url,
-    echo=env.DEBUG,
-    future=True,
-)
+# Database engine configuration with resilient fallback
+def _create_engine_safely():
+    target_url = env.effective_database_url
+    if not target_url or not target_url.strip():
+        target_url = "sqlite+aiosqlite:////tmp/signallens.db"
+    try:
+        return create_async_engine(target_url, echo=env.DEBUG, future=True)
+    except Exception as e:
+        print(f"⚠️ Engine creation failed for '{target_url}', falling back to /tmp/signallens.db: {e}")
+        return create_async_engine("sqlite+aiosqlite:////tmp/signallens.db", future=True)
+
+
+engine = _create_engine_safely()
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
@@ -23,6 +30,7 @@ AsyncSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
+
 
 
 _db_initialized = False

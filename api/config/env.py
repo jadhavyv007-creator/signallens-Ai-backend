@@ -98,6 +98,19 @@ class Settings(BaseSettings):
             return defaults.get(info.field_name, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
         return v.strip()
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def sanitize_database_url(cls, v: Any) -> str:
+        default_sqlite = "sqlite+aiosqlite:///./signallens.db"
+        if not v or not isinstance(v, str) or not v.strip():
+            return default_sqlite
+        val = v.strip()
+        if val.startswith("postgres://"):
+            val = val.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif val.startswith("postgresql://") and not val.startswith("postgresql+"):
+            val = val.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return val
+
     @field_validator("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY", "SUPABASE_JWT_SECRET", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET", "SENTRY_DSN", mode="before")
     @classmethod
     def sanitize_optional_strings(cls, v: Any) -> Optional[str]:
@@ -141,10 +154,14 @@ class Settings(BaseSettings):
             or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
             or os.environ.get("LAMBDA_TASK_ROOT")
         )
+        url = self.DATABASE_URL
+        if not url or not isinstance(url, str) or not url.strip():
+            url = "sqlite+aiosqlite:///./signallens.db"
         if is_serverless:
-            if "sqlite" in self.DATABASE_URL and not self.DATABASE_URL.startswith("sqlite+aiosqlite:////tmp"):
+            if "sqlite" in url and not url.startswith("sqlite+aiosqlite:////tmp"):
                 return "sqlite+aiosqlite:////tmp/signallens.db"
-        return self.DATABASE_URL
+        return url
+
 
 
 def load_settings() -> Settings:
