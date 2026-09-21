@@ -6,14 +6,16 @@ Conforms strictly to instruction.md and SignallensAI_prd.md standards.
 import os
 import sys
 
-# Ensure repository root and api directory are on sys.path in serverless runtime
-_current_dir = os.path.dirname(os.path.abspath(__file__))
-_root_dir = os.path.dirname(_current_dir)
-for _p in [_current_dir, _root_dir]:
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+file_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(file_dir)
+cwd = os.getcwd()
+
+for p in [file_dir, parent_dir, cwd, "/var/task", "/var/task/api"]:
+    if os.path.exists(p) and p not in sys.path:
+        sys.path.insert(0, p)
 
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
