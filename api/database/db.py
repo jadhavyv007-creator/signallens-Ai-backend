@@ -11,7 +11,7 @@ from api.database.models import Base
 
 # Database engine configuration
 engine = create_async_engine(
-    env.DATABASE_URL,
+    env.effective_database_url,
     echo=env.DEBUG,
     future=True,
 )

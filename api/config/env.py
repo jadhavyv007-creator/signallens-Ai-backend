@@ -82,6 +82,20 @@ class Settings(BaseSettings):
             and not self.RAZORPAY_KEY_SECRET.startswith("rzp_secret_placeholder")
         )
 
+    @property
+    def effective_database_url(self) -> str:
+        """Returns writable database URL on serverless platforms (Vercel / Lambda)."""
+        import os
+        is_serverless = bool(
+            os.environ.get("VERCEL")
+            or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+            or os.environ.get("LAMBDA_TASK_ROOT")
+        )
+        if is_serverless:
+            if "sqlite" in self.DATABASE_URL and not self.DATABASE_URL.startswith("sqlite+aiosqlite:////tmp"):
+                return "sqlite+aiosqlite:////tmp/signallens.db"
+        return self.DATABASE_URL
+
 
 def load_settings() -> Settings:
     try:

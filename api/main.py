@@ -37,13 +37,19 @@ async def lifespan(app: FastAPI):
     # ── Startup ──────────────────────────────────────────────────────────
     print(f"🚀 Initializing SignalLens AI Backend ({env.NODE_ENV} mode)...")
     
-    # 1. Initialize DB tables
-    await init_db()
-    print("✅ Database schema synchronized.")
+    # 1. Initialize DB tables safely
+    try:
+        await init_db()
+        print("✅ Database schema synchronized.")
+    except Exception as e:
+        print(f"⚠️ DB startup warning: {e}")
     
     # 2. Pre-load pure-NumPy Random Forest model into memory
-    model = get_model()
-    print(f"🌲 DSP Random Forest model preloaded ({model.n_estimators} trees, classes: {', '.join(model.classes)}).")
+    try:
+        model = get_model()
+        print(f"🌲 DSP Random Forest model preloaded ({model.n_estimators} trees, classes: {', '.join(model.classes)}).")
+    except Exception as e:
+        print(f"⚠️ Model startup warning: {e}")
     
     yield
     
@@ -56,8 +62,8 @@ app = FastAPI(
     description="Automated Signal Intelligence (SIGINT) & Pure-NumPy DSP Workbench API",
     version="3.0.0",
     lifespan=lifespan,
-    docs_url="/docs" if env.NODE_ENV != "production" else None,
-    redoc_url="/redoc" if env.NODE_ENV != "production" else None,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 # 1. Exception Handlers (Standard Error Response Shape)
