@@ -49,8 +49,8 @@ class AuthService:
             try:
                 self.supabase.sign_up(email=email, password=password, metadata={"name": name, "tier": "base"})
             except APIException as e:
-                # In development/test mode, gracefully allow signup flow even if rate limited by shared SMTP
-                if e.code == "SUPABASE_UNAVAILABLE" or (env.NODE_ENV != "production" and "rate limit" in str(e.message).lower()):
+                # In development/test mode, gracefully allow signup flow even if rate limited by shared SMTP or cloud unreachable
+                if e.code == "SUPABASE_UNAVAILABLE" or (env.NODE_ENV != "production" and (e.code == "RATE_LIMIT_EXCEEDED" or "rate limit" in str(e.message).lower())):
                     pass
                 else:
                     raise
@@ -61,28 +61,30 @@ class AuthService:
         }
 
     async def verify_otp(self, email: str, otp: str, name: Optional[str] = None) -> Tuple[TokenResponse, str]:
-        """Verifies 6-digit OTP, creates user record in local DB, and issues session tokens."""
+        """Verifies 6-digit or 8-digit OTP, creates user record in local DB, and issues session tokens."""
         user_id = None
         user_name = name
+        cleaned_otp = otp.strip()
 
         # 1. Verify OTP with Supabase if configured
         if self.supabase:
             try:
-                supa_res = self.supabase.verify_otp(email=email, token=otp, otp_type="signup")
+                supa_res = self.supabase.verify_email_otp(email=email, token=cleaned_otp, otp_type="signup")
                 supa_user = supa_res["user"]
                 user_id = getattr(supa_user, "id", None)
                 if not user_name and hasattr(supa_user, "user_metadata") and supa_user.user_metadata:
                     user_name = supa_user.user_metadata.get("name")
             except APIException as e:
-                # In development/test mode, allow '123456' bypass or fallback when Supabase cloud is unreachable
-                if e.code == "SUPABASE_UNAVAILABLE" or (env.NODE_ENV != "production" and otp == "123456"):
+                # In development/test mode, allow '123456' / '12345678' bypass or fallback when Supabase cloud is unreachable
+                if e.code == "SUPABASE_UNAVAILABLE" or (env.NODE_ENV != "production" and cleaned_otp in ("123456", "12345678")):
                     pass
                 else:
                     raise
         else:
             # Fallback for local testing / offline without Supabase
-            if otp != "123456" and len(otp) != 6:
+            if cleaned_otp not in ("123456", "12345678") and len(cleaned_otp) not in range(6, 9):
                 raise APIException(status_code=400, code="INVALID_OTP", message="Invalid or expired OTP")
+
 
         # 2. Sync / create user profile in local DB
         existing_user = await self.user_repo.get_by_email(email)

@@ -84,8 +84,12 @@ class SupabaseAuthService:
                 message=f"Supabase service unreachable: {str(e)}",
             )
 
+    def verify_email_otp(self, email: str, token: str, otp_type: str = "signup") -> Dict[str, Any]:
+        """Verifies 6-to-8 character OTP code sent to user email."""
+        return self.verify_otp(email=email, token=token, otp_type=otp_type)
+
     def verify_otp(self, email: str, token: str, otp_type: str = "signup") -> Dict[str, Any]:
-        """Verifies 6-digit OTP code sent to user email."""
+        """Verifies 6-to-8 character OTP code sent to user email."""
         try:
             response = self.client.auth.verify_otp({
                 "email": email,

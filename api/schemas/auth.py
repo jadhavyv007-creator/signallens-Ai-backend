@@ -5,7 +5,8 @@ Authentication and User Schemas (Pydantic v2 with camelCase aliases).
 from enum import Enum
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
+from typing import Any
 
 
 class UserRole(str, Enum):
@@ -37,10 +38,18 @@ class RegisterInitiateResponse(BaseModel):
 
 class VerifyOTPRequest(BaseModel):
     email: EmailStr
-    otp: str = Field(min_length=6, max_length=6, description="6-digit verification code")
+    otp: str = Field(min_length=6, max_length=8, description="6 to 8-character verification code")
     name: Optional[str] = Field(default=None)
 
+    @field_validator("otp", mode="before")
+    @classmethod
+    def sanitize_otp(cls, v: Any) -> str:
+        if isinstance(v, str):
+            return v.strip()
+        return str(v).strip()
+
     model_config = ConfigDict(populate_by_name=True)
+
 
 
 class LoginRequest(BaseModel):

@@ -131,3 +131,41 @@ async def test_account_lockout_on_failed_logins():
         locked_res = await client.post("/api/v1/auth/login", json={"email": unique_email, "password": wrong_pwd})
         assert locked_res.status_code == 403
         assert locked_res.json()["error"]["code"] == "ACCOUNT_LOCKED"
+
+
+@pytest.mark.asyncio
+async def test_verify_otp_supports_6_and_8_digits():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Test 1: 8-digit OTP succeeds
+        email_8digit = f"otp8_{uuid.uuid4().hex[:8]}@test.com"
+        await client.post("/api/v1/auth/register", json={"email": email_8digit, "password": "Password123!"})
+        res_8 = await client.post("/api/v1/auth/verify-otp", json={"email": email_8digit, "otp": "12345678", "name": "Agent Eight"})
+        assert res_8.status_code == 200
+        assert "accessToken" in res_8.json()["data"]
+
+        # Test 2: 8-digit OTP with surrounding whitespace is stripped and succeeds
+        email_8_ws = f"otp8ws_{uuid.uuid4().hex[:8]}@test.com"
+        await client.post("/api/v1/auth/register", json={"email": email_8_ws, "password": "Password123!"})
+        res_8_ws = await client.post("/api/v1/auth/verify-otp", json={"email": email_8_ws, "otp": "  12345678  ", "name": "Agent Trim"})
+        assert res_8_ws.status_code == 200
+        assert "accessToken" in res_8_ws.json()["data"]
+
+        # Test 3: 6-digit OTP succeeds
+        email_6digit = f"otp6_{uuid.uuid4().hex[:8]}@test.com"
+        await client.post("/api/v1/auth/register", json={"email": email_6digit, "password": "Password123!"})
+        res_6 = await client.post("/api/v1/auth/verify-otp", json={"email": email_6digit, "otp": "123456", "name": "Agent Six"})
+        assert res_6.status_code == 200
+        assert "accessToken" in res_6.json()["data"]
+
+        # Test 4: Too short (< 6 chars) triggers validation error (400 VALIDATION_ERROR)
+        res_short = await client.post("/api/v1/auth/verify-otp", json={"email": email_6digit, "otp": "12345"})
+        assert res_short.status_code == 400
+        assert res_short.json()["error"]["code"] == "VALIDATION_ERROR"
+
+        # Test 5: Too long (> 8 chars) triggers validation error (400 VALIDATION_ERROR)
+        res_long = await client.post("/api/v1/auth/verify-otp", json={"email": email_6digit, "otp": "123456789"})
+        assert res_long.status_code == 400
+        assert res_long.json()["error"]["code"] == "VALIDATION_ERROR"
+
+

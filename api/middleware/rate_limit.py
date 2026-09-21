@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from fastapi.responses import JSONResponse
+from api.config.env import env
 from api.schemas.common import APIException
 
 
@@ -39,12 +40,15 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
 
         client_ip = request.client.host if request.client else "unknown"
 
-        # 1. Strict limit for authentication endpoints (10 requests / 60 seconds)
+        # 1. Strict limit for authentication endpoints (10 req/min in prod, 500 in dev/test)
+        auth_limit = 500 if env.NODE_ENV != "production" else 10
+        api_limit = 2000 if env.NODE_ENV != "production" else 120
+
         if path.startswith("/api/v1/auth/login") or path.startswith("/api/v1/auth/register"):
             timestamps = self.auth_requests.setdefault(client_ip, [])
             timestamps = [t for t in timestamps if now - t < 60.0]
             self.auth_requests[client_ip] = timestamps
-            if len(timestamps) >= 10:
+            if len(timestamps) >= auth_limit:
                 return JSONResponse(
                     status_code=429,
                     content={
@@ -57,12 +61,12 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
                 )
             self.auth_requests[client_ip].append(now)
 
-        # 2. General API rate limit (120 requests / 60 seconds)
+        # 2. General API rate limit (120 req/min in prod, 2000 in dev/test)
         elif path.startswith("/api/"):
             timestamps = self.api_requests.setdefault(client_ip, [])
             timestamps = [t for t in timestamps if now - t < 60.0]
             self.api_requests[client_ip] = timestamps
-            if len(timestamps) >= 120:
+            if len(timestamps) >= api_limit:
                 return JSONResponse(
                     status_code=429,
                     content={
