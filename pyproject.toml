@@ -9,6 +9,10 @@ description = "SignalLens AI - FastAPI Backend & DSP Workbench"
 readme = "README.md"
 requires-python = ">=3.9"
 
+[tool.setuptools.packages.find]
+include = ["api*", "signalens*"]
+
 [tool.vercel]
 entrypoint = "main:app"
+
 
