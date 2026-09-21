@@ -1,10 +1,7 @@
 {
   "functions": {
     "api/index.py": {
-      "includeFiles": [
-        "signalens/**",
-        "models/**"
-      ]
+      "includeFiles": "{signalens/**,models/**}"
     }
   },
   "rewrites": [
@@ -14,4 +11,5 @@
     }
   ]
 }
+
 

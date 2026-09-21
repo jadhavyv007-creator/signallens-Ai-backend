@@ -40,13 +40,26 @@ _MODEL_INSTANCE: Optional[RandomForestNP] = None
 def get_model() -> RandomForestNP:
     global _MODEL_INSTANCE
     if _MODEL_INSTANCE is None:
-        model_path = os.path.join(os.path.dirname(__file__), "..", "models", "rf_classifier.json")
-        if os.path.exists(model_path):
-            _MODEL_INSTANCE = RandomForestNP.load_json(model_path)
-        else:
+        candidate_paths = [
+            os.path.join(os.path.dirname(__file__), "..", "models", "rf_classifier.json"),
+            os.path.join(os.path.dirname(__file__), "models", "rf_classifier.json"),
+            os.path.join(os.path.dirname(__file__), "..", "api", "models", "rf_classifier.json"),
+            os.path.join(os.getcwd(), "models", "rf_classifier.json"),
+        ]
+        loaded = False
+        for p in candidate_paths:
+            if os.path.exists(p):
+                try:
+                    _MODEL_INSTANCE = RandomForestNP.load_json(p)
+                    loaded = True
+                    break
+                except Exception:
+                    pass
+        if not loaded:
             # Fallback inline instantiation if weights missing
             _MODEL_INSTANCE = RandomForestNP(n_estimators=10, max_depth=6, classes=CLASSES)
     return _MODEL_INSTANCE
+
 
 
 def generate_intelligence_report(
