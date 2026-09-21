@@ -3,6 +3,16 @@ SignalLens AI - FastAPI Application Entrypoint.
 Conforms strictly to instruction.md and SignallensAI_prd.md standards.
 """
 
+import os
+import sys
+
+# Ensure repository root and api directory are on sys.path in serverless runtime
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_root_dir = os.path.dirname(_current_dir)
+for _p in [_current_dir, _root_dir]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +20,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.config.env import env
+
 from api.database.db import init_db
 from api.middleware.error_handler import (
     api_exception_handler,
